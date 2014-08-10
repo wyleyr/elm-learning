@@ -14,11 +14,11 @@ stateInput : Input State
 stateInput = input Red
 
 displayState : State -> Element
-displayState st = (spacer 30 30 |> 
-  case st of
+displayState st = spacer 30 30 |> 
+  (case st of
     Red -> color red 
     Yellow -> color yellow 
     Green -> color green)
-  |> clickable stateInput.handle (nextState st) 
+  . clickable stateInput.handle (nextState st) 
 
 main = lift displayState stateInput.signal
