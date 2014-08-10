@@ -14,9 +14,9 @@ stateInput : Input State
 stateInput = input Red
 
 displayState : State -> Element
-displayState st = case st of
-  Red -> plainText "The light is red" |> clickable stateInput.handle (nextState st)
-  Yellow -> plainText "The light is yellow" |> clickable stateInput.handle (nextState st)
-  Green -> plainText "The light is green" |> clickable stateInput.handle (nextState st)
+displayState st = clickable stateInput.handle (nextState st) <| case st of
+  Red -> plainText "The light is red" 
+  Yellow -> plainText "The light is yellow" 
+  Green -> plainText "The light is green"
 
 main = lift displayState stateInput.signal
