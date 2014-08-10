@@ -1,6 +1,6 @@
 import Mouse
 import Graphics.Input (Input, input, clickable)
-
+import Color (Color, red, yellow, green)
 
 data State = Red | Yellow | Green
 
@@ -14,9 +14,11 @@ stateInput : Input State
 stateInput = input Red
 
 displayState : State -> Element
-displayState st = clickable stateInput.handle (nextState st) <| case st of
-  Red -> plainText "The light is red" 
-  Yellow -> plainText "The light is yellow" 
-  Green -> plainText "The light is green"
+displayState st = (spacer 30 30 |> 
+  case st of
+    Red -> color red 
+    Yellow -> color yellow 
+    Green -> color green)
+  |> clickable stateInput.handle (nextState st) 
 
 main = lift displayState stateInput.signal
