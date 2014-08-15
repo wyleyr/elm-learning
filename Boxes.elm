@@ -1,8 +1,8 @@
 import Graphics.Input (Input, input, button, clickable)
-import Graphics.Input.Field (Field, field, Content, noContent, defaultStyle)
+import Graphics.Input.Field (Field, field, Content, noContent, Selection, Forward, defaultStyle)
 
 -- State representation
-data State = State Int Bool Content [Box]
+data State = State Int [Box]
 
 data Event = NewID Int | NewBox Bool | NewContent Content
 
@@ -29,11 +29,22 @@ newLabel : Input Content
 newLabel = input noContent
 
 -- Field in which user enters labels
-labelField : Signal Element
-labelField = field defaultStyle newLabel.handle id "New Label" <~ newLabel.signal
+labelOfActive : State -> Content
+labelOfActive (State activeId bxs) = 
+  let 
+    isActive (Box id _) = activeId == id
+    activeBoxes = filter isActive bxs
+    activeLabel = case activeBoxes of
+      [] -> noContent
+      (Box _ lbl)::others -> Content lbl (Selection (String.length lbl) (String.length lbl) Forward)
+   in activeLabel
 
-relabel : Content -> Box -> Box
-relabel content (Box id lb) = Box id content.string
+activeBoxLabel : Signal Content
+activeBoxLabel = lift labelOfActive states
+
+labelField : Signal Element
+labelField = field defaultStyle newLabel.handle id "New Label" <~ activeBoxLabel
+
 
 -- initial list of boxes
 box1 = Box 1 "Box 1"
@@ -53,6 +64,9 @@ addBox bxs =
   in bxs ++ [Box newId ("Box " ++ show newId)]
 
 -- relabel a selected box within an existing list
+relabel : Content -> Box -> Box
+relabel content (Box id lb) = Box id content.string
+
 relabelWith : Content -> Int -> [Box] -> [Box]
 relabelWith lbl activeId bxs = let 
     isActive (Box id lbl) = activeId == id
@@ -60,37 +74,26 @@ relabelWith lbl activeId bxs = let
     newBxs = map maybeRelabel bxs
   in newBxs
 
-
--- combine the various input signals into a single signal that evolves with each change
--- to one of the inputs
-makeState = State
-
-makeEvent : Int -> Bool -> Content -> (Int, Bool, Content)
-makeEvent = (,,)
-
+-- combine the various input signals into a single signal of Events 
 events : Signal Event
 events = merges [ NewID <~ activeElement.signal
                 , NewBox <~ newRequest.signal 
                 , NewContent <~ newLabel.signal
                 ]
 
+-- maintain global state, updating on the basis of Events 
 evolve : Event -> State -> State
-evolve ev (State activeId click oldLabel bxs) = let
+evolve ev (State activeId bxs) = let
     newId = case ev of (NewID id) -> id 
                        _ -> activeId
-    newLabel = case ev of
-      (NewContent label) -> label
-      _ -> oldLabel
     newBxs = case ev of
       (NewBox True) -> addBox bxs
-      (NewContent label) -> relabelWith newLabel newId bxs
+      (NewContent label) -> relabelWith label newId bxs
       _ -> bxs
-
-  in State newId False newLabel newBxs
+  in State newId newBxs
   
 states : Signal State
-states = foldp evolve (State 1 False noContent initialBoxes) events
---states = lift evolve steps 
+states = foldp evolve (State 1 initialBoxes) events
 
 -- display a scene representing the list of boxes, highlighting the active one
 displayBox : Box -> Element
@@ -108,7 +111,7 @@ displayBoxes activeId bxs = let
   in map disp bxs
 
 scene : State -> Element -> Element
-scene (State activeId click label bxs) lblField = 
+scene (State activeId bxs) lblField = 
   [newBoxButton, lblField] ++ displayBoxes activeId bxs |> flow down
 
 
